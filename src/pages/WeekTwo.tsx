@@ -1,6 +1,8 @@
 import "@/assets/pages/week02.css";
 import axios from "axios";
+import type { AxiosRequestConfig } from "axios";
 import { type TErrorResponse } from "@/types/axios";
+import { type TProduct } from "@/types/product";
 
 import { useState, useEffect, type ChangeEvent } from "react";
 
@@ -28,7 +30,9 @@ export default function WeekTwo() {
   const handleSubmit = async () => {
     try {
       const { data } = await axios.post(`${API_BASE}/admin/signin`, formData);
-      setIsAuth(data.success);
+      const { token, success, expired } = data;
+      document.cookie = `token=${token}; expires=${new Date(expired)}`;
+      setIsAuth(success);
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const { message } = error.response?.data as TErrorResponse;
@@ -37,10 +41,35 @@ export default function WeekTwo() {
     }
   };
 
+  const getCookieToken = (): string | null => {
+    const token = document.cookie.replace(
+      /(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/,
+      "$1"
+    );
+    return token;
+  };
+
+  // 檢查是否登入
   useEffect(() => {
     const checkAuth = async () => {
+      const token = getCookieToken();
+
+      if (!token) {
+        setIsAuth(false);
+        return;
+      }
+      const config: AxiosRequestConfig = {
+        headers: {
+          Authorization: token,
+        },
+      };
+
       try {
-        const { data } = await axios.post(`${API_BASE}/api/user/check`);
+        const { data } = await axios.post(
+          `${API_BASE}/api/user/check`,
+          {},
+          config
+        );
         setIsAuth(data.success);
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -53,8 +82,34 @@ export default function WeekTwo() {
     checkAuth();
   }, []);
 
-  const [products, setProducts] = useState([]);
-  const [tempProduct, setTempProduct] = useState(null);
+  const [products, setProducts] = useState<TProduct[]>([]);
+  const [tempProduct, setTempProduct] = useState<TProduct | null>(null);
+
+  // 取得產品列表
+  useEffect(() => {
+    const getProducts = async () => {
+      const config: AxiosRequestConfig = {
+        headers: {
+          Authorization: getCookieToken(),
+        },
+      };
+      try {
+        const { data } = await axios.get(`${API_BASE}/api/${API_PATH}/admin/products/all`, config);
+        const products: TProduct[] = Object.values(data.products)
+        setProducts(products);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const { message, success } = error.response?.data as TErrorResponse;
+          alert(message);
+          setIsAuth(success);
+        }
+      }
+    };
+
+    if (isAuth) {
+      getProducts();
+    }
+  }, [isAuth]);
 
   return (
     <>
@@ -93,7 +148,7 @@ export default function WeekTwo() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5">尚無產品資料</td>
+                      <td colSpan={5}>尚無產品資料</td>
                     </tr>
                   )}
                 </tbody>
