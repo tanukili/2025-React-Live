@@ -2,16 +2,17 @@ import "@/assets/pages/week02.css";
 import axios from "axios";
 import { type TErrorResponse } from "@/types/axios";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
+const API_PATH = import.meta.env.VITE_API_PATH;
 
 export default function WeekTwo() {
-  const API_BASE = import.meta.env.VITE_API_BASE;
-  const API_PATH = import.meta.env.VITE_API_PATH;
-
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
+  const [isAuth, setIsAuth] = useState(true);
 
   const handleInputChange = (
     inputName: string,
@@ -23,6 +24,7 @@ export default function WeekTwo() {
       [inputName]: event.target.value,
     });
   };
+
   const handleSubmit = async () => {
     try {
       const { data } = await axios.post(`${API_BASE}/admin/signin`, formData);
@@ -35,7 +37,22 @@ export default function WeekTwo() {
     }
   };
 
-  const [isAuth, setIsAuth] = useState(false);
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data } = await axios.post(`${API_BASE}/api/user/check`);
+        setIsAuth(data.success);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const { message, success } = error.response?.data as TErrorResponse;
+          setIsAuth(success);
+          alert(message);
+        }
+      }
+    };
+    checkAuth();
+  }, []);
+
   const [products, setProducts] = useState([]);
   const [tempProduct, setTempProduct] = useState(null);
 
