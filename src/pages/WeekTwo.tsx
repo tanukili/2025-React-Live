@@ -1,14 +1,39 @@
-import { useState } from "react";
 import "@/assets/pages/week02.css";
+import axios from "axios";
+import { type TErrorResponse } from "@/types/axios";
+
+import { useState, type ChangeEvent } from "react";
 
 export default function WeekTwo() {
-  const API_BASE = process.env.API_BASE;
-  const API_PATH = process.env.API_PATH;
+  const API_BASE = import.meta.env.VITE_API_BASE;
+  const API_PATH = import.meta.env.VITE_API_PATH;
 
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   });
+
+  const handleInputChange = (
+    inputName: string,
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    setFormData({
+      ...formData,
+      // 用變數當作 key
+      [inputName]: event.target.value,
+    });
+  };
+  const handleSubmit = async () => {
+    try {
+      const { data } = await axios.post(`${API_BASE}/admin/signin`, formData);
+      setIsAuth(data.success);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const { message } = error.response?.data as TErrorResponse;
+        alert(message);
+      }
+    }
+  };
 
   const [isAuth, setIsAuth] = useState(false);
   const [products, setProducts] = useState([]);
@@ -115,7 +140,7 @@ export default function WeekTwo() {
                     id="username"
                     placeholder="name@example.com"
                     value={formData.username}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange("username", e)}
                     required
                     autoFocus
                   />
@@ -128,7 +153,7 @@ export default function WeekTwo() {
                     id="password"
                     placeholder="Password"
                     value={formData.password}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange("password", e)}
                     required
                   />
                   <label htmlFor="password">Password</label>
