@@ -105,7 +105,7 @@ export default function WeekOne() {
           <h2>單一產品細節</h2>
           {tempProduct ? (
             <div className="card mb-3">
-              <img src={tempProduct.imageUrl} className="card-img-top primary-image" alt="主圖" />
+              <img src={tempProduct.imageUrl} className="card-img-top object-fit-contain mx-100" alt="主圖" style={{ height: "300px" }} />
               <div className="card-body">
                 <h5 className="card-title">
                   {tempProduct.title}
@@ -120,7 +120,7 @@ export default function WeekOne() {
                 <h5 className="mt-3">更多圖片：</h5>
                 <div className="d-flex flex-wrap">
                   {tempProduct.imagesUrl.map((image, index) => (
-                    <img src={image} className="object-fit-cover w-50 px-2" style={{ height: "200px" }} alt={`副圖${index + 1}`} />
+                    <img src={image} className="object-fit-contain mx-100 me-1" style={{ height: "150px" }} alt={`副圖${index + 1}`} />
                   ))}
                 </div>
               </div>
