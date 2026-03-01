@@ -1,6 +1,22 @@
+import { useState } from "react";
 export default function WeekOne() {
-  const [tempProduct, setTempProduct] = React.useState(null);
-  const [products, setProducts] = React.useState([
+  type Product = {
+    category: string;
+    content: string;
+    description: string;
+    id: string;
+    is_enabled: 1 | 0;
+    origin_price: number;
+    price: number;
+    title: string;
+    unit: string;
+    num: number;
+    imageUrl: string;
+    imagesUrl: string[];
+  };
+
+  const [tempProduct, setTempProduct] = useState<Product | null>(null);
+  const [products] = useState<Product[]>([
     {
       category: "甜甜圈",
       content: "尺寸：14x14cm",
@@ -69,16 +85,16 @@ export default function WeekOne() {
               </tr>
             </thead>
             <tbody>
-              {products.map((item) => (
+              {products.map((item: Product) => (
                 <tr key={item.id}>
                   <td>{item.title}</td>
                   <td>{item.origin_price}</td>
                   <td>{item.price}</td>
                   <td>
-                    {}
+                    {item.is_enabled ? "是" : "否"}
                   </td>
                   <td>
-                    <button className="btn btn-primary" onClick={}>查看細節</button>
+                    <button className="btn btn-primary" onClick={() => setTempProduct(item)}>查看細節</button>
                   </td>
                 </tr>
               ))}
@@ -89,21 +105,23 @@ export default function WeekOne() {
           <h2>單一產品細節</h2>
           {tempProduct ? (
             <div className="card mb-3">
-              <img src={} className="card-img-top primary-image" alt="主圖" />
+              <img src={tempProduct.imageUrl} className="card-img-top primary-image" alt="主圖" />
               <div className="card-body">
                 <h5 className="card-title">
-                  {}
-                  <span className="badge bg-primary ms-2">{}</span>
+                  {tempProduct.title}
+                  <span className="badge bg-primary ms-2">{tempProduct.category}</span>
                 </h5>
-                <p className="card-text">商品描述：{}</p>
-                <p className="card-text">商品內容：{}</p>
+                <p className="card-text">商品描述：{tempProduct.description}</p>
+                <p className="card-text">商品內容：{tempProduct.content}</p>
                 <div className="d-flex">
-                  <p className="card-text text-secondary"><del>{}</del></p>
-                  元 / {} 元
+                  <p className="card-text text-secondary"><del>{tempProduct.origin_price}</del></p>
+                  元 / {tempProduct.price} 元
                 </div>
                 <h5 className="mt-3">更多圖片：</h5>
                 <div className="d-flex flex-wrap">
-                  {}
+                  {tempProduct.imagesUrl.map((image, index) => (
+                    <img src={image} className="object-fit-cover w-50 px-2" style={{ height: "200px" }} alt={`副圖${index + 1}`} />
+                  ))}
                 </div>
               </div>
             </div>
