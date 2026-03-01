@@ -14,7 +14,7 @@ export default function WeekTwo() {
     username: "",
     password: "",
   });
-  const [isAuth, setIsAuth] = useState(true);
+  const [isAuth, setIsAuth] = useState(false);
 
   const handleInputChange = (
     inputName: string,
