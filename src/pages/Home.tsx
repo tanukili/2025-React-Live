@@ -1,0 +1,14 @@
+import { Link } from "react-router-dom";
+
+export default function Home() {
+  return (
+    <ul>
+      <li>
+        <Link to="/">Home</Link>
+      </li>
+      <li>
+        <Link to="/week-01">Week 1</Link>
+      </li>
+    </ul>
+  );
+}
