@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import type { ChangeEvent, SubmitEvent } from "react";
-import axios from "axios"; 
+import axios from "axios";
 import * as bootstrap from "bootstrap";
+import type { ChangeEvent, SubmitEvent } from "react";
+import type { TProduct } from "@/types/product";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 // const API_PATH = import.meta.env.VITE_API_PATH;
@@ -14,7 +15,6 @@ export default function WeekThree() {
   const [isAuth, setisAuth] = useState(false);
   const productModalRef = useRef<bootstrap.Modal | null>(null);
 
-  
   useEffect(() => {
     const token = document.cookie.replace(
       /(?:(?:^|.*;\s*)hexToken\s*=\s*([^;]*).*$)|^.*$/,
@@ -24,7 +24,7 @@ export default function WeekThree() {
     productModalRef.current = new bootstrap.Modal("#productModal", {
       keyboard: false,
     });
-    
+
     const checkAdmin = async () => {
       try {
         await axios.post(`${API_BASE}/api/user/check`);
@@ -36,7 +36,6 @@ export default function WeekThree() {
       }
     };
     checkAdmin();
-
   }, []);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -62,13 +61,79 @@ export default function WeekThree() {
     }
   };
 
+  const [productFormData, setProductFormData] = useState<TProduct>({
+    category: "",
+    content: "",
+    description: "",
+    id: "",
+    is_enabled: 0,
+    origin_price: 0,
+    price: 0,
+    title: "",
+    unit: "",
+    num: 0,
+    imageUrl: "",
+    imagesUrl: [],
+  });
+
+  const [imageUrl, setImageUrl] = useState("");
+
+  const handleAddImage = () => {
+    setProductFormData((prevData) => {
+      const { imageUrl: preImageUrl, imagesUrl: preImagesUrl } = prevData;
+      if (!preImageUrl) {
+        return {
+          ...prevData,
+          imageUrl: imageUrl,
+        };
+      }
+      return {
+        ...prevData,
+        imagesUrl: [...preImagesUrl, imageUrl],
+      };
+    });
+  };
+
+  const handleDeleteImage = () => {
+    setProductFormData((prevData) => {
+      const { imagesUrl: preImagesUrl } = prevData;
+      if (preImagesUrl.length > 0) {
+        return {
+          ...prevData,
+          imagesUrl: preImagesUrl.slice(0, -1),
+        };
+      }
+      return {
+        ...prevData,
+        imageUrl: "",
+      };
+    });
+  };
+
+  const handleProductFormChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { id, value } = e.target;
+    setProductFormData((prevData) => ({
+      ...prevData,
+      [id]: value,
+    }));
+    console.log(productFormData, id, value);
+  };
+
   return (
     <>
       {isAuth ? (
         <div>
           <div className="container">
             <div className="text-end mt-4">
-              <button className="btn btn-primary">建立新的產品</button>
+              <button
+                className="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#productModal"
+              >
+                建立新的產品
+              </button>
             </div>
             <table className="table mt-4">
               <thead>
@@ -187,17 +252,32 @@ export default function WeekThree() {
                         type="text"
                         className="form-control"
                         placeholder="請輸入圖片連結"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
                       />
                     </div>
-                    <img className="img-fluid" src="" alt="" />
+                    {productFormData.imageUrl && (
+                      <img
+                        className="img-fluid"
+                        src={productFormData.imageUrl}
+                        alt="產品主圖"
+                      />
+                    )}
+                    {productFormData.imagesUrl.length > 0 &&
+                      productFormData.imagesUrl.map((url, index) => (
+                        <img className="img-fluid mt-2" key={url + index} src={url} alt={`產品副圖${index + 1}`} />
+                      ))}
                   </div>
                   <div>
-                    <button className="btn btn-outline-primary btn-sm d-block w-100">
+                    <button
+                      className="btn btn-outline-primary btn-sm d-block w-100"
+                      onClick={handleAddImage}
+                    >
                       新增圖片
                     </button>
                   </div>
                   <div>
-                    <button className="btn btn-outline-danger btn-sm d-block w-100">
+                    <button className="btn btn-outline-danger btn-sm d-block w-100" onClick={handleDeleteImage}>
                       刪除圖片
                     </button>
                   </div>
@@ -212,6 +292,8 @@ export default function WeekThree() {
                       type="text"
                       className="form-control"
                       placeholder="請輸入標題"
+                      value={productFormData.title}
+                      onChange={handleProductFormChange}
                     />
                   </div>
 
@@ -225,6 +307,8 @@ export default function WeekThree() {
                         type="text"
                         className="form-control"
                         placeholder="請輸入分類"
+                        value={productFormData.category}
+                        onChange={handleProductFormChange}
                       />
                     </div>
                     <div className="mb-3 col-md-6">
@@ -236,6 +320,8 @@ export default function WeekThree() {
                         type="text"
                         className="form-control"
                         placeholder="請輸入單位"
+                        value={productFormData.unit}
+                        onChange={handleProductFormChange}
                       />
                     </div>
                   </div>
@@ -251,6 +337,8 @@ export default function WeekThree() {
                         min="0"
                         className="form-control"
                         placeholder="請輸入原價"
+                        value={productFormData.origin_price}
+                        onChange={handleProductFormChange}
                       />
                     </div>
                     <div className="mb-3 col-md-6">
@@ -263,6 +351,8 @@ export default function WeekThree() {
                         min="0"
                         className="form-control"
                         placeholder="請輸入售價"
+                        value={productFormData.price}
+                        onChange={handleProductFormChange}
                       />
                     </div>
                   </div>
@@ -276,6 +366,8 @@ export default function WeekThree() {
                       id="description"
                       className="form-control"
                       placeholder="請輸入產品描述"
+                      value={productFormData.description}
+                      onChange={handleProductFormChange}
                     ></textarea>
                   </div>
                   <div className="mb-3">
@@ -286,6 +378,8 @@ export default function WeekThree() {
                       id="content"
                       className="form-control"
                       placeholder="請輸入說明內容"
+                      value={productFormData.content}
+                      onChange={handleProductFormChange}
                     ></textarea>
                   </div>
                   <div className="mb-3">
@@ -294,6 +388,13 @@ export default function WeekThree() {
                         id="is_enabled"
                         className="form-check-input"
                         type="checkbox"
+                        value={productFormData.is_enabled}
+                        onChange={(e) =>
+                          setProductFormData((prevData) => ({
+                            ...prevData,
+                            is_enabled: e.target.checked ? 1 : 0,
+                          }))
+                        }
                       />
                       <label className="form-check-label" htmlFor="is_enabled">
                         是否啟用
