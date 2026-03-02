@@ -94,8 +94,11 @@ export default function WeekTwo() {
         },
       };
       try {
-        const { data } = await axios.get(`${API_BASE}/api/${API_PATH}/admin/products/all`, config);
-        const products: TProduct[] = Object.values(data.products)
+        const { data } = await axios.get(
+          `${API_BASE}/api/${API_PATH}/admin/products/all`,
+          config
+        );
+        const products: TProduct[] = Object.values(data.products);
         setProducts(products);
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -114,7 +117,7 @@ export default function WeekTwo() {
   return (
     <>
       {isAuth ? (
-        <div className="container">
+        <div className="container text-center">
           <div className="row mt-5">
             <div className="col-md-6">
               <h2>產品列表</h2>
@@ -200,46 +203,48 @@ export default function WeekTwo() {
           </div>
         </div>
       ) : (
-        <div className="container login">
-          <div className="row justify-content-center">
-            <h1 className="h3 mb-3 font-weight-normal">請先登入</h1>
-            <div className="col-8">
-              <form id="form" className="form-signin" onSubmit={handleSubmit}>
-                <div className="form-floating mb-3">
-                  <input
-                    type="email"
-                    className="form-control"
-                    id="username"
-                    placeholder="name@example.com"
-                    value={formData.username}
-                    onChange={(e) => handleInputChange("username", e)}
-                    required
-                    autoFocus
-                  />
-                  <label htmlFor="username">Email address</label>
-                </div>
-                <div className="form-floating">
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="password"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e)}
-                    required
-                  />
-                  <label htmlFor="password">Password</label>
-                </div>
-                <button
-                  className="btn btn-lg btn-primary w-100 mt-3"
-                  type="submit"
-                >
-                  登入
-                </button>
-              </form>
+        <div className="">
+          <div className="container login text-center vh-100">
+            <div className="row justify-content-center align-items-center h-100">
+              <div className="col-8">
+                <h1 className="h3 mb-3 font-weight-normal">請先登入</h1>
+                <form id="form" className="form-signin" onSubmit={handleSubmit}>
+                  <div className="form-floating mb-3">
+                    <input
+                      type="email"
+                      className="form-control"
+                      id="username"
+                      placeholder="name@example.com"
+                      value={formData.username}
+                      onChange={(e) => handleInputChange("username", e)}
+                      required
+                      autoFocus
+                    />
+                    <label htmlFor="username">Email address</label>
+                  </div>
+                  <div className="form-floating">
+                    <input
+                      type="password"
+                      className="form-control"
+                      id="password"
+                      placeholder="Password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e)}
+                      required
+                    />
+                    <label htmlFor="password">Password</label>
+                  </div>
+                  <button
+                    className="btn btn-lg btn-primary w-100 mt-3"
+                    type="submit"
+                  >
+                    登入
+                  </button>
+                </form>
+                <p className="mt-5 mb-3 text-muted">&copy; 2024~∞ - 六角學院</p>
+              </div>
             </div>
           </div>
-          <p className="mt-5 mb-3 text-muted">&copy; 2024~∞ - 六角學院</p>
         </div>
       )}
     </>
