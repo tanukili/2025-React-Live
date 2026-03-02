@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import type { ChangeEvent, SubmitEvent } from "react";
+import axios from "axios"; 
+import * as bootstrap from "bootstrap";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
-const API_PATH = import.meta.env.VITE_API_PATH;
+// const API_PATH = import.meta.env.VITE_API_PATH;
 
 export default function WeekThree() {
   const [formData, setFormData] = useState({
@@ -10,17 +12,9 @@ export default function WeekThree() {
     password: "",
   });
   const [isAuth, setisAuth] = useState(false);
-  const productModalRef = useRef(null);
+  const productModalRef = useRef<bootstrap.Modal | null>(null);
 
-  const checkAdmin = async () => {
-    try {
-      await axios.post(`${API_BASE}/api/user/check`);
-      setisAuth(true);
-    } catch (err) {
-      console.log(err.response.data.message);
-    }
-  };
-
+  
   useEffect(() => {
     const token = document.cookie.replace(
       /(?:(?:^|.*;\s*)hexToken\s*=\s*([^;]*).*$)|^.*$/,
@@ -30,10 +24,22 @@ export default function WeekThree() {
     productModalRef.current = new bootstrap.Modal("#productModal", {
       keyboard: false,
     });
+    
+    const checkAdmin = async () => {
+      try {
+        await axios.post(`${API_BASE}/api/user/check`);
+        setisAuth(true);
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          console.log(err.response?.data.message);
+        }
+      }
+    };
     checkAdmin();
+
   }, []);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
@@ -41,7 +47,7 @@ export default function WeekThree() {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_BASE}/admin/signin`, formData);
@@ -50,7 +56,9 @@ export default function WeekThree() {
       axios.defaults.headers.common.Authorization = token;
       setisAuth(true);
     } catch (error) {
-      alert("登入失敗: " + error.response.data.message);
+      if (axios.isAxiosError(error)) {
+        alert("登入失敗: " + error.response?.data.message);
+      }
     }
   };
 
