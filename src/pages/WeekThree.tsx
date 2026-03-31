@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import * as bootstrap from "bootstrap";
 import type { ChangeEvent, SubmitEvent } from "react";
 import type { TProduct } from "@/types/product";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
-// const API_PATH = import.meta.env.VITE_API_PATH;
+const API_PATH = import.meta.env.VITE_API_PATH;
 
 export default function WeekThree() {
   const [formData, setFormData] = useState({
@@ -16,10 +16,8 @@ export default function WeekThree() {
   const productModalRef = useRef<bootstrap.Modal | null>(null);
 
   useEffect(() => {
-    const token = document.cookie.replace(
-      /(?:(?:^|.*;\s*)hexToken\s*=\s*([^;]*).*$)|^.*$/,
-      "$1"
-    );
+    const token = document.cookie.replace(/(?:(?:^|.*;\s*)hexToken\s*=\s*([^;]*).*$)|^.*$/, "$1");
+    // 注意：已全域設定 Authorization token
     axios.defaults.headers.common.Authorization = token;
     productModalRef.current = new bootstrap.Modal("#productModal", {
       keyboard: false,
@@ -31,7 +29,7 @@ export default function WeekThree() {
         setisAuth(true);
       } catch (err) {
         if (axios.isAxiosError(err)) {
-          console.log(err.response?.data.message);
+          console.error(err.response?.data.message);
         }
       }
     };
@@ -61,6 +59,71 @@ export default function WeekThree() {
     }
   };
 
+  // 產品列表渲染
+  const [products, setProducts] = useState<TProduct[]>([]);
+
+  // useCallback，避免因 useEffect 重複渲染而建立多個；參數 2 為依賴陣列（空陣列 = Mount 階段建立一次，並保持同一個引用）
+  const fetchProductsList = useCallback(async (): Promise<TProduct[]> => {
+    const { data } = await axios.get(`${API_BASE}/api/${API_PATH}/admin/products/all`);
+    return Object.values(data.products);
+  }, []);
+
+  // 給外部用的
+  const getProducts = useCallback(async () => {
+    const list = await fetchProductsList();
+    setProducts(list);
+  }, [fetchProductsList]);
+
+  useEffect(() => {
+    if (!isAuth) return;
+
+    // 確保在元件 unmount 時，不會因為非同步操作而造成記憶體洩漏
+    let isMounted = true;
+
+    const fetchProducts = async () => {
+      try {
+        const list = await fetchProductsList();
+        if (isMounted) {
+          setProducts(list);
+        }
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          console.error(error.response?.data.message);
+        }
+      }
+    };
+
+    fetchProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuth, fetchProductsList]);
+
+  // 產品列表的 tr 元件
+  const ProductListTr = ({ product }: { product: TProduct }) => {
+    return (
+      <tr>
+        <td>{product.category}</td>
+        <td>{product.title}</td>
+        <td className="text-end">{product.origin_price}</td>
+        <td className="text-end">{product.price}</td>
+        <td>{product.is_enabled ? <span className="text-success">啟用</span> : <span>未啟用</span>}</td>
+        <td>
+          <div className="btn-group">
+            <button type="button" className="btn btn-outline-primary btn-sm">
+              編輯
+            </button>
+            <button type="button" className="btn btn-outline-danger btn-sm">
+              刪除
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  // 新增、編輯產品
   const [productFormData, setProductFormData] = useState<TProduct>({
     category: "",
     content: "",
@@ -78,7 +141,7 @@ export default function WeekThree() {
 
   const [imageUrl, setImageUrl] = useState("");
 
-  const handleAddImage = () => {
+  const addImage = () => {
     setProductFormData((prevData) => {
       const { imageUrl: preImageUrl, imagesUrl: preImagesUrl } = prevData;
       if (!preImageUrl) {
@@ -87,14 +150,16 @@ export default function WeekThree() {
           imageUrl: imageUrl,
         };
       }
+
       return {
         ...prevData,
         imagesUrl: [...preImagesUrl, imageUrl],
       };
     });
+    setImageUrl("");
   };
 
-  const handleDeleteImage = () => {
+  const deleteImage = () => {
     setProductFormData((prevData) => {
       const { imagesUrl: preImagesUrl } = prevData;
       if (preImagesUrl.length > 0) {
@@ -110,15 +175,52 @@ export default function WeekThree() {
     });
   };
 
-  const handleProductFormChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { id, value } = e.target;
+  const handleProductFormChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id } = e.target;
+    let value: string | number = e.target.value;
+
+    const toNumberField = ["origin_price", "price"];
+
+    if (toNumberField.includes(id)) {
+      value = Number(value) || 0;
+    }
+
     setProductFormData((prevData) => ({
       ...prevData,
       [id]: value,
     }));
     console.log(productFormData, id, value);
+  };
+
+  // 參數 1 為表單資料，參數 2 為必填欄位陣列
+  const checkRequiredFields = <T,>(data: T, fields: (keyof T)[]): boolean => {
+    const isValid = fields.every((field) => {
+      const value = data[field];
+      return value !== undefined && value !== null && value !== "";
+    });
+
+    if (!isValid) alert(`請檢查必填欄位: ${fields.join(", ")}`);
+
+    return isValid;
+  };
+
+  const submitProductForm = async () => {
+    const requiredFields: (keyof TProduct)[] = ["title", "category", "unit", "origin_price", "price"];
+    
+    const isValid = checkRequiredFields(productFormData, requiredFields);
+    if (!isValid) return;
+
+    try {
+      const { data } = await axios.post(`${API_BASE}/api/${API_PATH}/admin/product`, { data: productFormData });
+      alert(data.message);
+      productModalRef.current?.hide();
+      getProducts();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error(error.response?.data.message);
+        alert(error.response?.data.message);
+      }
+    }
   };
 
   return (
@@ -127,11 +229,7 @@ export default function WeekThree() {
         <div>
           <div className="container">
             <div className="text-end mt-4">
-              <button
-                className="btn btn-primary"
-                data-bs-toggle="modal"
-                data-bs-target="#productModal"
-              >
+              <button className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
                 建立新的產品
               </button>
             </div>
@@ -147,32 +245,9 @@ export default function WeekThree() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td></td>
-                  <td></td>
-                  <td className="text-end"></td>
-                  <td className="text-end"></td>
-                  <td>
-                    <span className="text-success">啟用</span>
-                    <span>未啟用</span>
-                  </td>
-                  <td>
-                    <div className="btn-group">
-                      <button
-                        type="button"
-                        className="btn btn-outline-primary btn-sm"
-                      >
-                        編輯
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger btn-sm"
-                      >
-                        刪除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                {products.map((product) => (
+                  <ProductListTr key={product.id} product={product} />
+                ))}
               </tbody>
             </table>
           </div>
@@ -208,10 +283,7 @@ export default function WeekThree() {
                   />
                   <label htmlFor="password">Password</label>
                 </div>
-                <button
-                  className="btn btn-lg btn-primary w-100 mt-3"
-                  type="submit"
-                >
+                <button className="btn btn-lg btn-primary w-100 mt-3" type="submit">
                   登入
                 </button>
               </form>
@@ -233,12 +305,7 @@ export default function WeekThree() {
               <h5 id="productModalLabel" className="modal-title">
                 <span>新增產品</span>
               </h5>
-              <button
-                type="button"
-                className="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
+              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div className="modal-body">
               <div className="row">
@@ -257,11 +324,7 @@ export default function WeekThree() {
                       />
                     </div>
                     {productFormData.imageUrl && (
-                      <img
-                        className="img-fluid"
-                        src={productFormData.imageUrl}
-                        alt="產品主圖"
-                      />
+                      <img className="img-fluid" src={productFormData.imageUrl} alt="產品主圖" />
                     )}
                     {productFormData.imagesUrl.length > 0 &&
                       productFormData.imagesUrl.map((url, index) => (
@@ -271,13 +334,18 @@ export default function WeekThree() {
                   <div>
                     <button
                       className="btn btn-outline-primary btn-sm d-block w-100"
-                      onClick={handleAddImage}
+                      onClick={addImage}
+                      disabled={!imageUrl}
                     >
                       新增圖片
                     </button>
                   </div>
                   <div>
-                    <button className="btn btn-outline-danger btn-sm d-block w-100" onClick={handleDeleteImage}>
+                    <button
+                      className="btn btn-outline-danger btn-sm d-block w-100"
+                      onClick={deleteImage}
+                      disabled={!productFormData.imageUrl}
+                    >
                       刪除圖片
                     </button>
                   </div>
@@ -405,14 +473,10 @@ export default function WeekThree() {
               </div>
             </div>
             <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                data-bs-dismiss="modal"
-              >
+              <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">
                 取消
               </button>
-              <button type="button" className="btn btn-primary">
+              <button type="button" className="btn btn-primary" onClick={submitProductForm}>
                 確認
               </button>
             </div>
