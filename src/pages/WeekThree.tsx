@@ -111,11 +111,15 @@ export default function WeekThree() {
         <td>{product.is_enabled ? <span className="text-success">啟用</span> : <span>未啟用</span>}</td>
         <td>
           <div className="btn-group">
-            <button type="button" className="btn btn-outline-primary btn-sm">
+            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => openProductModal(product)}>
               編輯
             </button>
-            <button type="button" className="btn btn-outline-danger btn-sm">
-              刪除
+            <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => deleteProduct(product.id)}>
+            {
+                  (deletingProductId === product.id) ? <div className="spinner-border spinner-border-sm" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div> : "刪除"
+                }
             </button>
           </div>
         </td>
@@ -124,7 +128,7 @@ export default function WeekThree() {
   };
 
   // 新增、編輯產品
-  const [productFormData, setProductFormData] = useState<TProduct>({
+  const setDefaultProduct = (): TProduct => ({
     category: "",
     content: "",
     description: "",
@@ -139,7 +143,29 @@ export default function WeekThree() {
     imagesUrl: [],
   });
 
+  const [productFormData, setProductFormData] = useState<TProduct>(setDefaultProduct());
   const [imageUrl, setImageUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const modalEl = document.getElementById("productModal");
+    if (!modalEl) return;
+
+    const handleHidden = () => {
+      setProductFormData(setDefaultProduct());
+    };
+
+    // removeEventListener 必須傳入與 addEventListener 同一個函式參考
+    modalEl.addEventListener("hidden.bs.modal", handleHidden);
+    return () => {
+      modalEl.removeEventListener("hidden.bs.modal", handleHidden);
+    };
+  }, []);
+
+  const openProductModal = (product: TProduct) => {
+    if (product.id) setProductFormData(product);
+    productModalRef.current?.show();
+  };
 
   const addImage = () => {
     setProductFormData((prevData) => {
@@ -153,7 +179,7 @@ export default function WeekThree() {
 
       return {
         ...prevData,
-        imagesUrl: [...preImagesUrl, imageUrl],
+        imagesUrl: [...(preImagesUrl || []), imageUrl],
       };
     });
     setImageUrl("");
@@ -162,7 +188,7 @@ export default function WeekThree() {
   const deleteImage = () => {
     setProductFormData((prevData) => {
       const { imagesUrl: preImagesUrl } = prevData;
-      if (preImagesUrl.length > 0) {
+      if (preImagesUrl?.length > 0) {
         return {
           ...prevData,
           imagesUrl: preImagesUrl.slice(0, -1),
@@ -189,7 +215,6 @@ export default function WeekThree() {
       ...prevData,
       [id]: value,
     }));
-    console.log(productFormData, id, value);
   };
 
   // 參數 1 為表單資料，參數 2 為必填欄位陣列
@@ -204,9 +229,10 @@ export default function WeekThree() {
     return isValid;
   };
 
-  const submitProductForm = async () => {
+  const addProduct = async () => {
+    setIsLoading(true);
     const requiredFields: (keyof TProduct)[] = ["title", "category", "unit", "origin_price", "price"];
-    
+
     const isValid = checkRequiredFields(productFormData, requiredFields);
     if (!isValid) return;
 
@@ -220,6 +246,52 @@ export default function WeekThree() {
         console.error(error.response?.data.message);
         alert(error.response?.data.message);
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const editProduct = async () => {
+    setIsLoading(true);
+    try {
+      const payload = {
+        data: {
+          ...productFormData,
+        },
+      };
+
+      const { data } = await axios.put(`${API_BASE}/api/${API_PATH}/admin/product/${productFormData.id}`, payload);
+
+      alert(data.message);
+      productModalRef.current?.hide();
+      getProducts();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error(error.response?.data.message);
+        alert(error.response?.data.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 刪除產品
+  const [deletingProductId, setDeletingProductId] = useState("");
+
+  const deleteProduct = async (id: string) => {
+    setDeletingProductId(id);
+    try {
+      const { data } = await axios.delete(`${API_BASE}/api/${API_PATH}/admin/product/${id}`);
+
+      alert(data.message);
+      getProducts();
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error(error.response?.data.message);
+        alert(error.response?.data.message);
+      }
+    } finally {
+      setDeletingProductId("");
     }
   };
 
@@ -303,7 +375,7 @@ export default function WeekThree() {
           <div className="modal-content border-0">
             <div className="modal-header bg-dark text-white">
               <h5 id="productModalLabel" className="modal-title">
-                <span>新增產品</span>
+                <span>{productFormData.id ? "編輯" : "新增"}產品</span>
               </h5>
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -326,7 +398,7 @@ export default function WeekThree() {
                     {productFormData.imageUrl && (
                       <img className="img-fluid" src={productFormData.imageUrl} alt="產品主圖" />
                     )}
-                    {productFormData.imagesUrl.length > 0 &&
+                    {productFormData.imagesUrl?.length > 0 &&
                       productFormData.imagesUrl.map((url, index) => (
                         <img className="img-fluid mt-2" key={url + index} src={url} alt={`產品副圖${index + 1}`} />
                       ))}
@@ -476,7 +548,12 @@ export default function WeekThree() {
               <button type="button" className="btn btn-outline-secondary" data-bs-dismiss="modal">
                 取消
               </button>
-              <button type="button" className="btn btn-primary" onClick={submitProductForm}>
+              <button type="button" className="btn btn-primary" onClick={productFormData.id ? editProduct : addProduct}>
+                {
+                  isLoading && <div className="spinner-border spinner-border-sm me-1" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                }
                 確認
               </button>
             </div>
